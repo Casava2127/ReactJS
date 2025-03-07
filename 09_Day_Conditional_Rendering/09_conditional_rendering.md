@@ -780,3 +780,209 @@ Now it is time to express your thoughts about the Author and 30DaysOfReact. You 
 🎉 CONGRATULATIONS ! 🎉
 
 [<< Day 8](../08_Day_States/08_states.md) | [Day 10 >>](../10_React_Project_Folder_Structure/10_react_project_folder_structure.md)
+
+
+# **📌 Bản Chất Thực Sự Của `State` Trong React**  
+
+---
+
+## **1️⃣ `State` Sinh Ra Để Làm Gì?**  
+`State` sinh ra với **mục đích quản lý dữ liệu thay đổi theo thời gian** trong một component.  
+- Nếu dữ liệu **tĩnh** → dùng **props**.  
+- Nếu dữ liệu **thay đổi (dynamic)** → dùng **state**.  
+
+🔹 **React không tự động theo dõi sự thay đổi của biến thông thường**. Nếu thay đổi giá trị một biến mà không dùng `state`, React **không render lại UI**.  
+
+📌 **Ví dụ sai (không dùng state, UI không cập nhật):**  
+```jsx
+let count = 0;
+
+const handleClick = () => {
+  count++; // Tăng count
+  console.log(count); // Giá trị tăng, nhưng UI không cập nhật
+};
+
+const Counter = () => (
+  <div>
+    <h1>Giá trị: {count}</h1>
+    <button onClick={handleClick}>Tăng</button>
+  </div>
+);
+```
+**🛑 Kết quả:** UI vẫn hiển thị `0` dù `count` đã tăng trong console!  
+
+✅ **Giải pháp:** Sử dụng `state` để React biết rằng có sự thay đổi.  
+
+```jsx
+const Counter = () => {
+  const [count, setCount] = React.useState(0);
+
+  return (
+    <div>
+      <h1>Giá trị: {count}</h1>
+      <button onClick={() => setCount(count + 1)}>Tăng</button>
+    </div>
+  );
+};
+```
+🔹 **Lợi ích:** Khi gọi `setCount(count + 1)`, React sẽ cập nhật lại giao diện.  
+
+---
+
+## **2️⃣ Bản Chất Của `State` – Hiểu Sâu Bên Trong**  
+🔹 Khi gọi `useState()`, React **không lưu state vào biến thông thường** mà lưu nó **ở cấp độ component instance**.  
+🔹 Khi component **re-render**, biến thông thường **bị reset**, nhưng `state` vẫn giữ nguyên giá trị.  
+
+📌 **Ví dụ:**  
+```jsx
+const Counter = () => {
+  let count = 0; // Biến thông thường
+  const [stateCount, setStateCount] = React.useState(0);
+
+  return (
+    <div>
+      <h1>Normal: {count}</h1>
+      <h1>State: {stateCount}</h1>
+      <button onClick={() => { count++; setStateCount(stateCount + 1); }}>
+        Tăng
+      </button>
+    </div>
+  );
+};
+```
+🚀 **Khi nhấn nút:**  
+✔ `stateCount` tăng đúng vì dùng `setState()`.  
+❌ `count` không hiển thị giá trị mới vì bị reset sau mỗi lần render.  
+
+🔹 **Kết luận:** `state` được React lưu trữ **ngoài component function**, nên giá trị **không bị mất sau mỗi lần re-render**.
+
+---
+
+## **3️⃣ `setState()` Không Thể Hiện Ngay Lập Tức – Vì Sao?**
+🔹 **`setState()` hoạt động bất đồng bộ** để tối ưu hiệu suất.  
+🔹 Nếu gọi nhiều `setState()` liên tiếp, React **gom nhóm lại (batching)** và thực hiện một lần để tránh render quá nhiều lần.  
+
+📌 **Ví dụ sai – `setState()` chưa cập nhật ngay lập tức:**  
+```jsx
+const Counter = () => {
+  const [count, setCount] = React.useState(0);
+
+  const handleClick = () => {
+    setCount(count + 1);
+    console.log(count); // ❌ In ra giá trị cũ!
+  };
+
+  return <button onClick={handleClick}>Tăng</button>;
+};
+```
+📌 **Cách đúng – Dùng `prevState` để đảm bảo giá trị đúng:**  
+```jsx
+const handleClick = () => {
+  setCount(prevCount => prevCount + 1);
+  console.log(count); // Giá trị trong console có thể sai, nhưng UI đúng
+};
+```
+🔹 **Lý do:** React **chưa cập nhật `state` ngay lập tức**, nhưng khi dùng callback (`prevCount`), React lấy giá trị mới nhất.
+
+---
+
+## **4️⃣ Khi Nào `State` Gây Ra Render Lại UI?**
+✔ **Gây re-render nếu:**  
+   - `setState()` nhận giá trị **mới khác giá trị cũ**.  
+   - Component có state bị thay đổi.  
+
+❌ **Không gây re-render nếu:**  
+   - Gọi `setState()` với **giá trị cũ**.  
+   - `state` chứa **object/array không thay đổi tham chiếu (reference)**.  
+
+📌 **Ví dụ sai – Không làm UI cập nhật:**  
+```jsx
+const [user, setUser] = useState({ name: 'John' });
+
+const updateUser = () => {
+  user.name = 'Alice'; // ❌ Thay đổi trực tiếp object
+  setUser(user);       // ❌ Không thay đổi reference => UI không cập nhật
+};
+```
+📌 **Cách đúng – Tạo object mới:**  
+```jsx
+setUser({ ...user, name: 'Alice' });
+```
+🔹 **Lý do:** React so sánh object **bằng tham chiếu (reference)**, không phải nội dung.  
+
+---
+
+## **5️⃣ Những Kiến Thức Chỉ Có Kinh Nghiệm Mới Biết**
+### **🔥 1. `State` Không Nhất Thiết Phải Là Object**
+🔹 Nhiều người nghĩ `state` luôn phải là object, nhưng nó có thể là **bất kỳ kiểu dữ liệu nào** (string, number, boolean, array, object, v.v.).
+
+```jsx
+const [count, setCount] = useState(0); // ✅ Number
+const [name, setName] = useState("John"); // ✅ String
+const [isVisible, setIsVisible] = useState(true); // ✅ Boolean
+const [items, setItems] = useState([]); // ✅ Array
+const [user, setUser] = useState({ name: "Alice", age: 25 }); // ✅ Object
+```
+
+---
+
+### **🔥 2. `State` Trong Function Component Không Tự Kết Hợp (`merge`)**
+🔹 Trong Class Component, `setState()` **gộp (merge)** object cũ với object mới.  
+🔹 Nhưng với `useState()`, React **không tự động merge**.  
+
+📌 **Ví dụ sai – Dữ liệu bị mất:**  
+```jsx
+const [user, setUser] = useState({ name: "Alice", age: 25 });
+
+const updateName = () => {
+  setUser({ name: "John" }); // ❌ Mất thuộc tính `age`
+};
+```
+📌 **Cách đúng – Dùng spread operator:**  
+```jsx
+setUser(prevUser => ({ ...prevUser, name: "John" }));
+```
+
+---
+
+### **🔥 3. Dùng `useReducer()` Khi `State` Phức Tạp**
+🔹 Nếu state có nhiều thuộc tính và nhiều logic cập nhật, **dùng `useReducer()` thay vì `useState()`** để code dễ quản lý hơn.
+
+```jsx
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "INCREMENT":
+      return { ...state, count: state.count + 1 };
+    case "SET_NAME":
+      return { ...state, name: action.payload };
+    default:
+      return state;
+  }
+};
+
+const Counter = () => {
+  const [state, dispatch] = useReducer(reducer, { count: 0, name: "Alice" });
+
+  return (
+    <div>
+      <h1>{state.count}</h1>
+      <button onClick={() => dispatch({ type: "INCREMENT" })}>+</button>
+      <button onClick={() => dispatch({ type: "SET_NAME", payload: "Bob" })}>
+        Change Name
+      </button>
+    </div>
+  );
+};
+```
+🔹 **Lợi ích:** Code rõ ràng hơn khi có nhiều logic cập nhật.
+
+---
+
+## **🚀 Kết Luận**
+✔ `State` giúp quản lý dữ liệu động trong component.  
+✔ `setState()` **bất đồng bộ** và có thể bị **batching**.  
+✔ Không nên **thay đổi trực tiếp object trong state** → dùng spread operator.  
+✔ Khi state phức tạp, **dùng `useReducer()`** thay vì `useState()`.  
+✔ Nếu dùng biến thông thường thay vì state, UI sẽ **không cập nhật**.  
+
+👉 **Kinh nghiệm thực tế giúp tránh lỗi khi làm việc với state và tối ưu hiệu suất.** 🚀
